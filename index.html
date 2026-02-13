@@ -1,12 +1,288 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memory Gallery</title>
+<link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
+<style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+        height: 100vh; width: 100vw; overflow: hidden;
+        font-family: 'Indie Flower', cursive;
+        background: radial-gradient(circle at top left, #ffc0cb 0%, #ffe6f0 60%, #fff6f9 100%);
+        user-select: none;
+    }
+    #counter {
+        position: fixed; top: 20px; right: 20px; background: rgba(255, 255, 255, 0.7);
+        padding: 10px 20px; border-radius: 30px; font-size: 22px; color: #d63384;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid #fff; z-index: 2000;
+        opacity: 0; transition: opacity 1s; pointer-events: none;
+    }
+    .card {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+        background: #fff6e5; color: #2c3e50; padding: 40px 30px; width: 90%; max-width: 500px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.25); border: 1px solid #e0cfa0;
+        cursor: pointer; z-index: 100;
+    }
+    #typed, #final-typed { font-size: 18px; min-height: 60px; display: block; }
+    .particle { position: fixed; pointer-events: none; z-index: 2000; }
+    .kiss-particle { position: fixed; pointer-events: none; font-size: 50px; z-index: 3000; }
+    .falling-item { position: fixed; cursor: pointer; will-change: transform, top; z-index: 10; }
+    .photo {
+        width: 80px; height: 100px; padding: 6px; background: #fff;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 4px;
+        transition: width 0.5s, height 0.5s;
+    }
+    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .photo.blurred img { filter: blur(8px); }
+    .photo.enlarged { width: 320px !important; height: 400px !important; z-index: 1000 !important; cursor: default; }
+    .caption {
+        position: absolute; bottom: -60px; left: 0; width: 100%; text-align: center;
+        background: rgba(255, 255, 255, 0.95); padding: 10px; opacity: 0;
+        transition: opacity 0.5s, bottom 0.5s; font-size: 16px; color: #333;
+    }
+    .photo.enlarged .caption { bottom: 0; opacity: 1; }
+    .emoji { font-size: 45px; text-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 50; }
+    #final-letter { display: none; }
+</style>
 </head>
 <body>
-    <h1>Welcome to My Website</h1>
-    <p>This is a basic HTML file.</p>
+
+<audio id="bg-music" src="audios/song.mp3" loop></audio>
+
+<div id="counter">Moments: 0/8</div>
+
+<div class="card" id="intro">
+    <h2 style="margin-bottom:15px;">Hey Sanele,</h2>
+    <p id="typed"></p>
+    <p style="margin-top:20px; font-size:12px; opacity:0.6; text-align:center;">(Click to open)</p>
+</div>
+
+<div class="card" id="final-letter">
+    <h2 style="margin-bottom:15px;">To My Favorite Person,</h2>
+    <p id="final-typed"></p>
+    <p style="margin-top:20px; font-size:14px; opacity:0.6; text-align:center;">(Click to seal with love ❤️💋)</p>
+</div>
+
+<script>
+const INTRO_TEXT = "This is for you. For the way you make me smile without even trying, for the way you hold my heart so gently, and for every moment we’ve shared that turned into a memory I never want to lose. Being with you has been one of the most beautiful parts of my life, and this little surprise is just a small reminder of how much you mean to me. I love you more than words can fully explain.";
+
+const FINAL_LETTER_TEXT = "If I could gather every quiet moment we’ve shared and hold it in my hands, it would look like this. You have become my safe place, my laughter on heavy days, and the calm in the middle of my chaos. Loving you feels gentle and certain, like something my heart always knew before I did. This little collection of memories is only a glimpse of what you mean to me, but I hope when you see it, you feel even a fraction of the love I carry for you every single day.";
+
+const IMAGE_COUNT = 8; 
+const EMOJIS = ["💝","💖","💗","💓","💞","💕","❣️","❤️‍🔥","❤️","🩷","🧡"];
+const FINALE_EMOJIS = ["💋", "❤️"];
+const WHATSAPP_NUMBER = "27687066832";
+
+let viewedIndices = new Set();
+let activePhoto = null;
+let stage2PhotoInterval, stage2EmojiInterval, stage3LetterInterval;
+let stage3Active = false;
+let isFinalLetterDone = false;
+let waOpened = false;
+
+const typedEl = document.getElementById('typed');
+const introCard = document.getElementById('intro');
+const counterEl = document.getElementById('counter');
+const finalLetterCard = document.getElementById('final-letter');
+const finalTypedEl = document.getElementById('final-typed');
+const bgMusic = document.getElementById('bg-music');
+
+// --- Stage 1 ---
+function typeWriter(text, element, speed = 35, callback) {
+    let i = 0;
+    function type() {
+        if (i < text.length) {
+            element.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, speed);
+        } else if (callback) { callback(); }
+    }
+    type();
+}
+setTimeout(() => typeWriter(INTRO_TEXT, typedEl), 500);
+
+introCard.addEventListener('click', () => {
+    introCard.style.opacity = "0";
+    burstElement(introCard, 20, "paper"); 
+    bgMusic.play().catch(e => console.log("Music waiting for interaction"));
+    setTimeout(() => {
+        introCard.style.display = "none";
+        startStage2();
+    }, 400);
+});
+
+// --- Stage 2 ---
+function startStage2() {
+    counterEl.style.opacity = "1";
+    stage2PhotoInterval = setInterval(spawnPhoto, 3500); 
+    stage2EmojiInterval = setInterval(spawnEmoji, 1200);  
+}
+
+function spawnPhoto() {
+    const id = Math.floor(Math.random() * IMAGE_COUNT) + 1;
+    const div = document.createElement('div');
+    div.classList.add('photo', 'falling-item');
+    div.classList.add(viewedIndices.has(id) ? 'discovered' : 'blurred');
+    div.innerHTML = `<img src="images/photo ${id}.jpg" draggable="false"><div class="caption">Memory #${id}</div>`;
+    document.body.appendChild(div);
+    const physics = setupPhysics(div, 0.3, 0.7); 
+
+    div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (div.classList.contains('enlarged')) { closeActivePhoto(); } 
+        else {
+            if (activePhoto) closeActivePhoto();
+            physics.stop();
+            markAsViewed(id);
+            enlargePhoto(div);
+        }
+    });
+}
+
+function closeActivePhoto() {
+    if (activePhoto) {
+        burstElement(activePhoto, 15, "image");
+        activePhoto.remove();
+        activePhoto = null;
+    }
+}
+
+function spawnEmoji() {
+    const char = EMOJIS[Math.floor(Math.random() * EMOJIS.length)];
+    const div = document.createElement('div');
+    div.classList.add('emoji', 'falling-item');
+    div.textContent = char;
+    document.body.appendChild(div);
+    setupPhysics(div, 0.4, 0.9); 
+    div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        burstElement(div, 6, "emoji"); 
+        div.remove();
+    });
+}
+
+// --- Stage 3 ---
+function startStage3() {
+    if (stage3Active) return;
+    stage3Active = true;
+    clearInterval(stage2PhotoInterval);
+    clearInterval(stage2EmojiInterval);
+    setTimeout(() => { stage3LetterInterval = setInterval(spawnLoveLetter, 1200); }, 1000);
+}
+
+function spawnLoveLetter() {
+    const div = document.createElement('div');
+    div.classList.add('emoji', 'falling-item');
+    div.textContent = "💌";
+    document.body.appendChild(div);
+    setupPhysics(div, 0.5, 1.0);
+    div.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearInterval(stage3LetterInterval);
+        burstElement(div, 10, "emoji");
+        div.remove();
+        openFinalLetter();
+    });
+}
+
+function openFinalLetter() {
+    finalLetterCard.style.display = "block";
+    typeWriter(FINAL_LETTER_TEXT, finalTypedEl, 40, () => { isFinalLetterDone = true; });
+
+    finalLetterCard.addEventListener('click', (e) => {
+        for(let i=0; i<5; i++) {
+            spawnFinaleParticle(e.clientX + (Math.random()-0.5)*50, e.clientY + (Math.random()-0.5)*50);
+        }
+        
+        setTimeout(() => {
+            burstElement(finalLetterCard, 25, "paper");
+            finalLetterCard.style.display = "none";
+            
+            setInterval(() => {
+                spawnFinaleParticle(Math.random() * window.innerWidth, Math.random() * window.innerHeight);
+            }, 150);
+
+            setTimeout(() => {
+                if (!waOpened) {
+                    waOpened = true;
+                    window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=I%20loved%20the%20surprise!%20Everything%20you%20wrote%20was%20so%20sweet.%20❤️💋`;
+                }
+            }, 3500);
+
+        }, 300);
+    });
+}
+
+function spawnFinaleParticle(x, y) {
+    const p = document.createElement('div');
+    p.className = 'kiss-particle';
+    p.textContent = FINALE_EMOJIS[Math.floor(Math.random() * FINALE_EMOJIS.length)];
+    p.style.left = x + 'px'; p.style.top = y + 'px';
+    document.body.appendChild(p);
+    p.animate([
+        { transform: 'translate(-50%, -50%) scale(0.5)', opacity: 1 },
+        { transform: `translate(-50%, -50%) scale(${Math.random() * 5 + 7})`, opacity: 0 }
+    ], { duration: 1200 + Math.random() * 500, easing: 'ease-out' }).onfinish = () => p.remove();
+}
+
+// --- Core Physics ---
+function setupPhysics(el, minSpeed, maxSpeed) {
+    const startX = Math.random() * (window.innerWidth - 100);
+    let posY = -150, speed = Math.random() * (maxSpeed - minSpeed) + minSpeed;
+    let rotation = Math.random() * 360, rotationSpeed = (Math.random() - 0.5) * 0.2; 
+    let isRunning = true;
+    el.style.left = startX + 'px';
+    function loop() {
+        if (!isRunning || !document.body.contains(el)) return;
+        posY += speed; rotation += rotationSpeed;
+        el.style.top = posY + 'px'; el.style.transform = `rotate(${rotation}deg)`;
+        if (posY > window.innerHeight + 150) { el.remove(); isRunning = false; } 
+        else { requestAnimationFrame(loop); }
+    }
+    requestAnimationFrame(loop);
+    return { stop: () => { isRunning = false; } };
+}
+
+function enlargePhoto(el) {
+    activePhoto = el;
+    el.style.top = "50%"; el.style.left = "50%";
+    el.style.transform = "translate(-50%, -50%) rotate(0deg)";
+    el.classList.add('enlarged');
+    el.querySelector('img').style.filter = "none";
+}
+
+function markAsViewed(id) {
+    viewedIndices.add(id);
+    counterEl.textContent = `Moments: ${viewedIndices.size}/${IMAGE_COUNT}`;
+    if(viewedIndices.size >= IMAGE_COUNT) {
+        counterEl.style.background = "linear-gradient(45deg, #ffd700, #fff)";
+        counterEl.textContent = "All Moments Found! ✨";
+        startStage3();
+    }
+}
+
+function burstElement(el, count, type) {
+    const rect = el.getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+    const imgSrc = type === "image" ? el.querySelector('img').src : null;
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement('div');
+        p.classList.add('particle');
+        document.body.appendChild(p);
+        if(type === "emoji") { p.textContent = el.textContent; p.style.fontSize = "30px"; } 
+        else if (type === "image") { p.style.width = "50px"; p.style.height = "50px"; p.style.backgroundImage = `url('${imgSrc}')`; p.style.backgroundSize = "cover"; } 
+        else { p.style.width = "40px"; p.style.height = "25px"; p.style.background = "#fff6e5"; p.style.border = "1px solid #e0cfa0"; }
+        const angle = Math.random() * Math.PI * 2, velocity = Math.random() * 300 + 200;
+        p.style.left = centerX + 'px'; p.style.top = centerY + 'px';
+        p.animate([
+            { transform: `translate(-50%, -50%) scale(1)`, opacity: 1 },
+            { transform: `translate(calc(-50% + ${Math.cos(angle) * velocity}px), calc(-50% + ${Math.sin(angle) * velocity}px)) scale(0)`, opacity: 0 }
+        ], { duration: 1500, easing: 'cubic-bezier(0.1, 0.9, 0.3, 1)', fill: 'forwards' }).onfinish = () => p.remove();
+    }
+}
+</script>
 </body>
 </html>
