@@ -122,17 +122,37 @@ function startStage2() {
 
 function spawnPhoto() {
     const id = Math.floor(Math.random() * IMAGE_COUNT) + 1;
+    
+    // Mapping your custom captions to the photo IDs
+    const captions = {
+        1: "This is how home feels like❤️, warm and gentle…",
+        2: "Even if you get annoyed I’m not going anywhere 😌, unfortunately…",
+        3: "Even when we first met I knew I should keep you close, and I’ve never been happier 🥰",
+        4: "The sweetest and most loving person ever 🤭 I love you baby❤️.",
+        5: "Our very first Valentine’s Day!!!🥳",
+        6: "I love you more than you think I do, you may think I don’t sometimes but trust me you’ll always be in my heart Boo🥺",
+        7: "Ndikuthanda wena uyeva👀 and that’s a warning.",
+        8: "You came into my life at a time I didn’t expect to find love again and I’m happy I gave myself a chance at love again, it’s worth it 💋"
+    };
+
     const div = document.createElement('div');
     div.classList.add('photo', 'falling-item');
     div.classList.add(viewedIndices.has(id) ? 'discovered' : 'blurred');
-    div.innerHTML = `<img src="images/photo ${id}.jpg" draggable="false"><div class="caption">Memory #${id}</div>`;
+    
+    // Using the ID to pull the specific caption from the list above
+    div.innerHTML = `
+        <img src="images/photo ${id}.jpg" draggable="false">
+        <div class="caption">${captions[id]}</div>
+    `;
+    
     document.body.appendChild(div);
     const physics = setupPhysics(div, 0.3, 0.7); 
 
     div.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (div.classList.contains('enlarged')) { closeActivePhoto(); } 
-        else {
+        if (div.classList.contains('enlarged')) { 
+            closeActivePhoto(); 
+        } else {
             if (activePhoto) closeActivePhoto();
             physics.stop();
             markAsViewed(id);
@@ -140,6 +160,7 @@ function spawnPhoto() {
         }
     });
 }
+
 
 function closeActivePhoto() {
     if (activePhoto) {
