@@ -7,12 +7,11 @@
 <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&display=swap" rel="stylesheet">
 <style>
     * { margin:0; padding:0; box-sizing:border-box; }
-        body {
+    body {
         height: 100vh; 
         width: 100vw; 
         overflow: hidden;
         font-family: 'Indie Flower', cursive;
-        /* Updated Background Logic */
         background-image: linear-gradient(rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.3)), url('images/background.jpg');
         background-size: cover;
         background-position: center;
@@ -26,24 +25,39 @@
         box-shadow: 0 4px 15px rgba(0,0,0,0.1); border: 2px solid #fff; z-index: 2000;
         opacity: 0; transition: opacity 1s; pointer-events: none;
     }
+
     .card {
         position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
         background: #fff6e5; color: #2c3e50; padding: 40px 30px; width: 90%; max-width: 500px;
         box-shadow: 0 15px 35px rgba(0,0,0,0.25); border: 1px solid #e0cfa0;
         cursor: pointer; z-index: 100;
     }
+
     #typed, #final-typed { font-size: 18px; min-height: 60px; display: block; }
     .particle { position: fixed; pointer-events: none; z-index: 2000; }
     .kiss-particle { position: fixed; pointer-events: none; font-size: 50px; z-index: 3000; }
-    .falling-item { position: fixed; cursor: pointer; will-change: transform, top; z-index: 10; }
+    .falling-item { position: fixed; cursor: pointer; will-change: transform, top, left; z-index: 10; }
+
+    /* Updated Photo Styles for smooth transition */
     .photo {
         width: 80px; height: 100px; padding: 6px; background: #fff;
         box-shadow: 0 4px 15px rgba(0,0,0,0.2); border-radius: 4px;
-        transition: width 0.5s, height 0.5s;
+        transition: width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                    height 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), 
+                    transform 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
     }
-    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .photo img { width: 100%; height: 100%; object-fit: cover; display: block; transition: filter 0.5s; }
     .photo.blurred img { filter: blur(8px); }
-    .photo.enlarged { width: 320px !important; height: 400px !important; z-index: 1000 !important; cursor: default; }
+    
+    /* Removed top/left overrides to allow transform-based centering */
+    .photo.enlarged { 
+        width: 320px !important; 
+        height: 400px !important; 
+        z-index: 1000 !important; 
+        cursor: default; 
+    }
+
     .caption {
         position: absolute; bottom: -60px; left: 0; width: 100%; text-align: center;
         background: rgba(255, 255, 255, 0.95); padding: 10px; opacity: 0;
@@ -57,7 +71,6 @@
 <body>
 
 <audio id="bg-music" src="audios/song.mp3" loop></audio>
-
 <div id="counter">Moments: 0/8</div>
 
 <div class="card" id="intro">
@@ -74,7 +87,6 @@
 
 <script>
 const INTRO_TEXT = "This is for you. For the way you make me smile without even trying, for the way you hold my heart so gently, and for every moment we’ve shared that turned into a memory I never want to lose. Being with you has been one of the most beautiful parts of my life, and this little surprise is just a small reminder of how much you mean to me. I love you more than words can fully explain.";
-
 const FINAL_LETTER_TEXT = "If I could gather every quiet moment we’ve shared and hold it in my hands, it would look like this. You have become my safe place, my laughter on heavy days, and the calm in the middle of my chaos. Loving you feels gentle and certain, like something my heart always knew before I did. This little collection of memories is only a glimpse of what you mean to me, but I hope when you see it, you feel even a fraction of the love I carry for you every single day.";
 
 const IMAGE_COUNT = 8; 
@@ -96,7 +108,6 @@ const finalLetterCard = document.getElementById('final-letter');
 const finalTypedEl = document.getElementById('final-typed');
 const bgMusic = document.getElementById('bg-music');
 
-// --- Stage 1 ---
 function typeWriter(text, element, speed = 35, callback) {
     let i = 0;
     function type() {
@@ -120,7 +131,6 @@ introCard.addEventListener('click', () => {
     }, 400);
 });
 
-// --- Stage 2 ---
 function startStage2() {
     counterEl.style.opacity = "1";
     stage2PhotoInterval = setInterval(spawnPhoto, 3500); 
@@ -129,8 +139,6 @@ function startStage2() {
 
 function spawnPhoto() {
     const id = Math.floor(Math.random() * IMAGE_COUNT) + 1;
-    
-    // Mapping your custom captions to the photo IDs
     const captions = {
         1: "This is how home feels like❤️, warm and gentle…",
         2: "Even if you get annoyed I’m not going anywhere 😌, unfortunately…",
@@ -144,9 +152,8 @@ function spawnPhoto() {
 
     const div = document.createElement('div');
     div.classList.add('photo', 'falling-item');
-    div.classList.add(viewedIndices.has(id) ? 'discovered' : 'blurred');
+    if (!viewedIndices.has(id)) div.classList.add('blurred');
     
-    // Using the ID to pull the specific caption from the list above
     div.innerHTML = `
         <img src="images/photo ${id}.jpg" draggable="false">
         <div class="caption">${captions[id]}</div>
@@ -167,7 +174,6 @@ function spawnPhoto() {
         }
     });
 }
-
 
 function closeActivePhoto() {
     if (activePhoto) {
@@ -191,7 +197,6 @@ function spawnEmoji() {
     });
 }
 
-// --- Stage 3 ---
 function startStage3() {
     if (stage3Active) return;
     stage3Active = true;
@@ -227,7 +232,6 @@ function openFinalLetter() {
         setTimeout(() => {
             burstElement(finalLetterCard, 25, "paper");
             finalLetterCard.style.display = "none";
-            
             setInterval(() => {
                 spawnFinaleParticle(Math.random() * window.innerWidth, Math.random() * window.innerHeight);
             }, 150);
@@ -238,7 +242,6 @@ function openFinalLetter() {
                     window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=I%20loved%20the%20surprise!%20Everything%20you%20wrote%20was%20so%20sweet.%20❤️💋`;
                 }
             }, 3500);
-
         }, 300);
     });
 }
@@ -255,7 +258,6 @@ function spawnFinaleParticle(x, y) {
     ], { duration: 1200 + Math.random() * 500, easing: 'ease-out' }).onfinish = () => p.remove();
 }
 
-// --- Core Physics ---
 function setupPhysics(el, minSpeed, maxSpeed) {
     const startX = Math.random() * (window.innerWidth - 100);
     let posY = -150, speed = Math.random() * (maxSpeed - minSpeed) + minSpeed;
@@ -273,11 +275,25 @@ function setupPhysics(el, minSpeed, maxSpeed) {
     return { stop: () => { isRunning = false; } };
 }
 
+// THE UPDATED LOGIC: Moves and grows the image from its current spot to center
 function enlargePhoto(el) {
     activePhoto = el;
-    el.style.top = "50%"; el.style.left = "50%";
-    el.style.transform = "translate(-50%, -50%) rotate(0deg)";
+    
+    // 1. Get current position 
+    const rect = el.getBoundingClientRect();
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+
+    // 2. Calculate offsets to reach center (320x400 is the final size)
+    const moveX = centerX - rect.left - 160; 
+    const moveY = centerY - rect.top - 200;  
+
+    // 3. Trigger transition
+    el.classList.remove('blurred');
     el.classList.add('enlarged');
+    
+    // Apply the translation based on current location
+    el.style.transform = `translate(${moveX}px, ${moveY}px) rotate(0deg)`;
     el.querySelector('img').style.filter = "none";
 }
 
